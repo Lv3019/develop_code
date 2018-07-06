@@ -10,6 +10,8 @@ import time
 from post import post
 import urllib2
 import requests
+import xlrd #读取模块
+import xlwt #写入模块
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
@@ -20,9 +22,8 @@ from twisted.python.runtime import seconds
 url = "http://shangyu.108sq.com"
 #板块链接
 links = {}
-#帖子数
+#帖子总数
 ps = {}
-#
 
     
 #声明浏览器
@@ -32,13 +33,13 @@ def driver_open():
    dcap["phantomjs.page.settings.userAgent"] = (r"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3100.0 Safari/537.36") 
    #打开带配置信息的phantomJS浏览器
    driver = webdriver.PhantomJS(executable_path="D:\System sofeware\python27\Scripts\phantomjs.exe",desired_capabilities=dcap)
-   # 隐式等待10秒，可以自己调节
+   # 隐式等待2秒，可以自己调节
    driver.implicitly_wait(2)
    # 设置10秒页面超时返回，类似于requests.get()的timeout选项，driver.get()没有timeout选项
    # 以前遇到过driver.get(url)一直不返回，但也不报错的问题，这时程序会卡住，设置超时选项能解决这个问题。
-   driver.set_page_load_timeout(10)
-   # 设置10秒脚本超时时间
-   driver.set_script_timeout(20)
+   driver.set_page_load_timeout(20)
+   # 设置n秒脚本超时时间
+   driver.set_script_timeout(30)
    return driver
 #获取js加载后的页面
 def get_content(driver,url):
@@ -76,10 +77,20 @@ def fornum(driver,url):
     next_link = url
     #循环获取下一页内容
     while 1:
+        print '第' + str(seq) + '页'
+        
+        #每爬5页休息20sec
+        if seq % 5 == 0 :
+            print 'sleep-20sec'
+            time.sleep(20)
+            
         soup = get_content(driver, next_link)
         posts(soup) 
         next_link = nextlink(soup)
-        if seq >3:
+        
+        if next_link == '':
+            break
+        if seq >30:
             break
         else:
             seq += 1     
@@ -139,20 +150,54 @@ def postinfo(info):
     #填充对象post
     p = post(sec,infoid,userid,username,up,comment)
     return p
+
+#写入excel
+def writeToExcel(infos):
+    file = xlwt.Workbook(encoding='utf-8',style_compression=0)
+    #创建sheet；参数cell_overwrite_ok 表示是否可以覆盖单元格，默认值为False
+    sheet = file.add_sheet(u'新鲜事',cell_overwrite_ok=False) 
+    #插入标题   
+    sheet.write(0,0,'infoid')
+    sheet.write(0,1,'userid')
+    sheet.write(0,2,'username')
+    sheet.write(0,3,'create_time')
+    sheet.write(0,4,'up')
+    sheet.write(0,5,'comment')
+    
+    #插入数据
+    rk = 0
+    for key,value in ps.items():
+        rk += 1
+        sheet.write(rk,0,value.getinfoid())
+        sheet.write(rk,1,value.getuserid())
+        sheet.write(rk,2,value.getusername())
+        sheet.write(rk,3,value.getcreatetime())
+        sheet.write(rk,4,value.getup())
+        sheet.write(rk,5,value.getcomment())
+        print '第' + str(rk) + '次写入'
+
+    #保存指定excel文件中
+    file.save('C:\\Users\\Administrator\\Desktop\\108.xls')    
     
 if __name__ == '__main__':
     
-    try:
-        print time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())
+
+        print "开始派虫：" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())
+        
+        #板块链接
         fornumlist()
-        driver = driver_open()  
+        #开启浏览器
+        driver = driver_open() 
+        #帖子信息封装 
         getpage(driver)
-        print time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())
-        print ps.keys()   
+        #写入excel
+        writeToExcel(ps)
+        
+        print "结束派虫：" + time.strftime('%Y-%m-%d %H:%M:%S',time.localtime())
+          
         #退出webdriver
         driver.quit()
-    except(Exception):
-        driver.quit()
+
     
     #遍历字典，类似map
     #for key in links:
