@@ -3,7 +3,7 @@
 '''
 Created on 2018年7月2日
 爬108社区
-@author: Lv
+@author: Lv0
 '''
 import re
 import time
@@ -40,7 +40,8 @@ def driver_open():
    driver.set_page_load_timeout(20)
    # 设置n秒脚本超时时间
    driver.set_script_timeout(30)
-   return driver
+   return driver
+
 #获取js加载后的页面
 def get_content(driver,url):
     driver.get(url)
